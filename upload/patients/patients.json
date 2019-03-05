@@ -1,0 +1,26 @@
+[{
+  "firstName": "Rick",
+  "lastName": "Deckard",
+  "dateOfBirth": "2094-02-01",
+  "externalId": "5"
+}, {
+  "firstName": "Pris",
+  "lastName": "Stratton",
+  "dateOfBirth": "2093-12-20",
+  "externalId": "4"
+}, {
+  "firstName": "Roy",
+  "lastName": "Batti",
+  "dateOfBirth": "2093-06-12",
+  "externalId": "8"
+}, {
+  "firstName": "Eldon",
+  "lastName": "Tyrell",
+  "dateOfBirth": "2056-04-01",
+  "externalId": "15"
+}, {
+  "firstName": "Eldon 2",
+  "lastName": "Tyrell",
+  "dateOfBirth": "2056-04-02",
+  "externalId": "15"
+}]
