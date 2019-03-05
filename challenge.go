@@ -83,9 +83,9 @@ func patientsParser() {
 			t = time.Now()
 			tx.Exec(`ALTER TABLE patients_new SET LOGGED`)
 			tx.Exec(`ALTER TABLE patients_new ADD PRIMARY KEY (id)`)
-			tx.Exec(`CREATE UNIQUE INDEX patients_external_id_uidx ON patients_new (external_id)`)
+			tx.Exec(fmt.Sprintf("CREATE UNIQUE INDEX patients_external_id_uidx_%d ON patients_new (external_id)", time.Now().UnixNano()))
 			tx.Exec(`ANALYSE patients_new`)
-			fmt.Printf("Индексы созданы за %s\n", time.Since(start))
+			fmt.Printf("Индексы созданы за %s\n", time.Since(t))
 
 			t = time.Now()
 			tx.Exec(`ALTER TABLE IF EXISTS patients_sub NO INHERIT patients`)
@@ -93,7 +93,7 @@ func patientsParser() {
 			tx.Exec(`ALTER TABLE IF EXISTS patients_new RENAME TO patients_sub`)
 			tx.Exec(`ALTER TABLE IF EXISTS patients_sub INHERIT patients`)
 			tx.Exec(`DROP TABLE IF EXISTS patients_old`)
-			fmt.Printf("Таблицы свопнуты за %s\n", time.Since(start))
+			fmt.Printf("Таблицы свопнуты за %s\n", time.Since(t))
 
 			tx.Commit()
 
@@ -135,7 +135,7 @@ func paymentsParser() {
 			tx.Exec(fmt.Sprintf("CREATE UNIQUE INDEX payments_external_id_uidx_%d ON payments_new (external_id)", time.Now().UnixNano()))
 			tx.Exec(fmt.Sprintf("CREATE INDEX payments_patient_id_uidx_%d ON payments_new (patient_id)", time.Now().UnixNano()))
 			tx.Exec(`ANALYSE payments_new`)
-			fmt.Printf("Индексы созданы за %s\n", time.Since(start))
+			fmt.Printf("Индексы созданы за %s\n", time.Since(t))
 
 			t = time.Now()
 			tx.Exec(`ALTER TABLE IF EXISTS payments_sub NO INHERIT payments`)
@@ -143,7 +143,7 @@ func paymentsParser() {
 			tx.Exec(`ALTER TABLE IF EXISTS payments_new RENAME TO payments_sub`)
 			tx.Exec(`ALTER TABLE IF EXISTS payments_sub INHERIT payments`)
 			tx.Exec(`DROP TABLE IF EXISTS payments_old`)
-			fmt.Printf("Таблицы свопнуты за %s\n", time.Since(start))
+			fmt.Printf("Таблицы свопнуты за %s\n", time.Since(t))
 
 			t = time.Now()
 			tx.Exec(`DROP TABLE IF EXISTS patients_stats_new`)
@@ -162,7 +162,7 @@ func paymentsParser() {
 			tx.Exec(`ALTER TABLE IF EXISTS patients_stats_new RENAME TO patients_stats_sub`)
 			tx.Exec(`ALTER TABLE IF EXISTS patients_stats_sub INHERIT patients_stats`)
 			tx.Exec(`DROP TABLE IF EXISTS patients_stats_old`)
-			fmt.Printf("Статиситка посчитана за %s\n", time.Since(start))
+			fmt.Printf("Статиситка посчитана за %s\n", time.Since(t))
 
 			tx.Commit()
 
@@ -200,13 +200,13 @@ func split(data []byte, atEOF bool) (advance int, token []byte, err error) {
 }
 
 func parseJson(file string, w io.WriteCloser) {
-	var uniq = map[string]interface{}{}
+	//var uniq = map[string]interface{}{}
 
 	bw := bufio.NewWriter(w)
 	f, _ := os.Open(file)
 
 	dec := json.NewDecoder(bufio.NewReader(f))
-	dec.Token() // Пропускаем [
+	dec.Token() // Пропускаем "["
 
 	payment := &struct {
 		Amount     float64 `json:"amount"`
@@ -217,12 +217,12 @@ func parseJson(file string, w io.WriteCloser) {
 	for dec.More() {
 		dec.Decode(&payment)
 
-		if _, ok := uniq[payment.ExternalId]; ok {
-			fmt.Printf(" !!! Пропускаем externalId=%s\n", payment.ExternalId)
-			continue
-		}
+		//if _, ok := uniq[payment.ExternalId]; ok {
+		//	fmt.Printf(" !!! Пропускаем externalId=%s\n", payment.ExternalId)
+		//	continue
+		//}
 
-		uniq[payment.ExternalId] = nil
+		//uniq[payment.ExternalId] = nil
 
 		bw.WriteString(payment.ExternalId)
 		bw.WriteByte(',')
@@ -248,33 +248,39 @@ func parseJsonToken(b []byte, name []byte) []byte {
 }
 
 func parseJsonFile(file string, w io.WriteCloser) {
-	var extId []byte
-	var uniq = map[string]interface{}{}
+	//var extId []byte
+	//var uniq = map[string]interface{}{}
 
 	bw := bufio.NewWriter(w)
 	f, _ := os.Open(file)
 	scanner := bufio.NewScanner(bufio.NewReader(f))
 	scanner.Split(split)
 
+	ext := []byte(`"externalId"`)
+	fnm := []byte(`"firstName"`)
+	lnm := []byte(`"lastName"`)
+	dob := []byte(`"dateOfBirth"`)
+
 	for scanner.Scan() {
 		b := scanner.Bytes()
 		if len(b) > 1 {
-			extId = parseJsonToken(b, []byte(`"externalId"`))
+			//extId = parseJsonToken(b, []byte(`"externalId"`))
 
-			if _, ok := uniq[string(extId)]; ok {
-				fmt.Printf(" !!! Пропускаем externalId=%s\n", extId)
-				continue
-			}
+			//if _, ok := uniq[string(extId)]; ok {
+			//	fmt.Printf(" !!! Пропускаем externalId=%s\n", extId)
+			//	continue
+			//}
 
-			uniq[string(extId)] = nil
+			//uniq[string(extId)] = nil
 
-			bw.Write(extId)
+			//bw.Write(extId)
+			bw.Write(parseJsonToken(b, ext))
 			bw.WriteByte(',')
-			bw.Write(parseJsonToken(b, []byte(`"firstName"`)))
+			bw.Write(parseJsonToken(b, fnm))
 			bw.WriteByte(',')
-			bw.Write(parseJsonToken(b, []byte(`"lastName"`)))
+			bw.Write(parseJsonToken(b, lnm))
 			bw.WriteByte(',')
-			bw.Write(parseJsonToken(b, []byte(`"dateOfBirth"`)))
+			bw.Write(parseJsonToken(b, dob))
 			bw.WriteByte('\n')
 		}
 	}
